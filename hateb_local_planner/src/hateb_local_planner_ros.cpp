@@ -221,7 +221,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     humans_states_pub_ = nh.advertise<human_msgs::StateArray>("humans_states",1);
     log_pub_ = nh.advertise<std_msgs::String>(HATEB_LOG,1);
 
-    last_call_time_ = ros::Time::now() - ros::Duration(cfg_.hateb.pose_prediction_reset_time);
+    last_call_time_ = ros::Time::now();
 
     last_omega_sign_change_ = ros::Time::now() - ros::Duration(cfg_.optim.omega_chage_time_seperation);
 
