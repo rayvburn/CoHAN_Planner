@@ -106,6 +106,8 @@
 // Backoff recovery
 #include <hateb_local_planner/backoff.h>
 
+// STL
+#include <map>
 
 namespace hateb_local_planner
 {
@@ -565,8 +567,8 @@ private:
 
   // Human ids, states and velocities
   std::vector<int> visible_human_ids; // List of visible humans
-  std::vector<std::vector<double>> human_vels; // List of human velocities over time
-  std::vector<double> human_nominal_vels; // Nominal velocities  of humans based on moving average filter
+  std::map<unsigned int, std::vector<double>> human_vels; // List of human velocities over time
+  std::map<unsigned int, double> human_nominal_vels; // Nominal velocities  of humans based on moving average filter
   human_msgs::StateArray humans_states_; // State of humans
 
   // Backoff recovery params

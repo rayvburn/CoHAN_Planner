@@ -305,6 +305,27 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
   std::vector<double> hum_xpos;
   std::vector<double> hum_ypos;
 
+  // searching for old tracks
+  std::vector<unsigned int> old_track_ids;
+  for (const auto& human_vel: human_vels) {
+    auto it = std::find_if(
+      tracked_humans_.humans.begin(),
+      tracked_humans_.humans.end(),
+      [&](const human_msgs::TrackedHuman& tracked_human) {
+        return human_vel.first == tracked_human.track_id;
+      }
+    );
+    // human ID from human_vels not found in the newest track ID list
+    if (it == tracked_humans_.humans.end()) {
+      old_track_ids.push_back(human_vel.first);
+    }
+  }
+  // clearing old tracks
+  for (const auto& human_id: old_track_ids) {
+    human_vels.erase(human_id);
+    human_nominal_vels.erase(human_id);
+  }
+
   int itr = 0;
 
   for(auto &human: tracked_humans_.humans){
@@ -312,10 +333,18 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
       humans_states_.states.push_back(hateb_local_planner::HumanState::NO_STATE);
       //humans_states_.states.push_back(hateb_local_planner::HumanState::STATIC);
     }
-    if(human_vels.size()< human.track_id){
-      std::vector<double> h_vels;
-      human_vels.push_back(h_vels);
-      human_nominal_vels.push_back(0.0);
+
+    // check if data of a specific human is already stored
+    auto human_vels_it = std::find_if(
+      human_vels.begin(),
+      human_vels.end(),
+      [&](const std::pair<unsigned int, std::vector<double>>& human_vel) {
+        return human_vel.first == human.track_id;
+      }
+    );
+    // a given ID was NOT found in the storage
+    if (human_vels_it == human_vels.end()) {
+      human_nominal_vels[human.track_id] = 0.0;
     }
     for (auto &segment : human.segments){
       if(segment.type==DEFAULT_HUMAN_SEGMENT){
@@ -324,7 +353,7 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
         humans_behind.push_back(rh_vec.dot(robot_vec));
         human_dists.push_back(rh_vec.norm());
 
-        human_vels[itr].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
+        human_vels[human.track_id].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
 
         if((abs(segment.twist.twist.linear.x)+abs(segment.twist.twist.linear.y)+abs(segment.twist.twist.angular.z)) > 0.0001){
           if(humans_states_.states[itr]!=hateb_local_planner::HumanState::BLOCKED){
@@ -332,15 +361,15 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
           }
         }
 
-        auto n = human_vels[itr].size();
+        auto n = human_vels[human.track_id].size();
         float average = 0.0f;
         if (n != 0) {
-          average = accumulate(human_vels[itr].begin(), human_vels[itr].end(), 0.0) / n;
+          average = accumulate(human_vels[human.track_id].begin(), human_vels[human.track_id].end(), 0.0) / n;
         }
-        human_nominal_vels[itr] = average;
+        human_nominal_vels[human.track_id] = average;
 
         if(n==cfg_.human.num_moving_avg)
-          human_vels[itr].erase(human_vels[itr].begin());
+          human_vels[human.track_id].erase(human_vels[human.track_id].begin());
         }
     }
     itr++;
@@ -831,7 +860,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
         PlanStartVelGoalVel plan_start_vel_goal_vel;
         plan_start_vel_goal_vel.plan = human_plan_combined.plan_to_optimize;
         plan_start_vel_goal_vel.start_vel = transformed_vel.twist;
-        plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id-1]);
+        plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id]);
         plan_start_vel_goal_vel.isMode = isMode;
         if (human_plan_combined.plan_after.size() > 0) {
           plan_start_vel_goal_vel.goal_vel = transformed_vel.twist;
@@ -882,7 +911,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
           PlanStartVelGoalVel plan_start_vel_goal_vel;
           plan_start_vel_goal_vel.plan.push_back(transformed_human_pose);
-          plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id-1]);
+          plan_start_vel_goal_vel.nominal_vel = std::max(0.3, human_nominal_vels[predicted_humans_poses.id]);
           plan_start_vel_goal_vel.isMode = isMode;
           transformed_human_plan_vel_map[predicted_humans_poses.id] =
               plan_start_vel_goal_vel;
@@ -2388,7 +2417,8 @@ bool HATebLocalPlannerROS::optimizeStandalone(
     PlanStartVelGoalVel plan_start_vel_goal_vel;
     plan_start_vel_goal_vel.plan = human_plan_combined.plan_to_optimize;
     plan_start_vel_goal_vel.start_vel = transformed_vel.twist;
-    // plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id-1]);
+    // uncommenting below will destroy compilation
+    // plan_start_vel_goal_vel.nominal_vel = std::max(0.3, human_nominal_vels[predicted_humans_poses.id]);
     plan_start_vel_goal_vel.isMode = isMode;
     if (human_plan_combined.plan_after.size() > 0) {
       plan_start_vel_goal_vel.goal_vel = transformed_vel.twist;
