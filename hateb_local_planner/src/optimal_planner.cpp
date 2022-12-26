@@ -456,7 +456,7 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
     }
     else
     {
-      ROS_INFO("no or multiple humans for approaching %d", initial_human_plan_vel_map->size());
+      ROS_INFO("no or multiple humans for approaching %lu", initial_human_plan_vel_map->size());
       // set approach_pose_ same as the current robot pose
       approach_pose_ = initial_plan.front();
     }
