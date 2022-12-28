@@ -558,7 +558,7 @@ private:
   //Planner State determining parameters
   // different flags, times and measures
   bool isDistunderThreshold, isDistMax, stuck, goal_ctrl, reset_states, ext_goal, backed_off;
-  std::vector<bool> human_still;
+  std::map<unsigned int, bool> human_still;
   ros::Time last_position_time, last_omega_sign_change_;
   double last_omega_;
 
@@ -566,10 +566,10 @@ private:
   int isMode, change_mode;
 
   // Human ids, states and velocities
-  std::vector<int> visible_human_ids; // List of visible humans
+  std::vector<int> visible_human_ids; // List of visible humans, sorted, closest human is represented by the first ID
   std::map<unsigned int, std::vector<double>> human_vels; // List of human velocities over time
   std::map<unsigned int, double> human_nominal_vels; // Nominal velocities  of humans based on moving average filter
-  human_msgs::StateArray humans_states_; // State of humans
+  std::map<unsigned int, int8_t> humans_states_; // State of humans
 
   // Backoff recovery params
   int stuck_human_id; // Stores the human id who blocked the robot's way during backoff recovery
