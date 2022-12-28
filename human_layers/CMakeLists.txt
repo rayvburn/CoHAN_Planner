@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.12)
 project(human_layers)
 set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Werror")
 

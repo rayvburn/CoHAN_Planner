@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.12)
 project(rviz_path_array)
 
 add_compile_options(-std=c++11)

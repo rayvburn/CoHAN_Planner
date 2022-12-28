@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.12)
 project(human_msgs)
 
 set(CMAKE_CXX_COMPILER_ARG1 -std=c++11)
