@@ -297,7 +297,12 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
   // std::vector<bool> humans_behind_ids;
 
   geometry_msgs::TransformStamped transformStamped;
-  transformStamped = tf_->lookupTransform("map", "base_link",ros::Time(0),ros::Duration(0.5));
+  transformStamped = tf_->lookupTransform(
+    tracked_humans_.header.frame_id,
+    robot_base_frame_,
+    ros::Time(0),
+    ros::Duration(0.5)
+  );
   auto xpos = transformStamped.transform.translation.x;
   auto ypos = transformStamped.transform.translation.y;
   auto ryaw = tf2::getYaw(transformStamped.transform.rotation);
@@ -604,7 +609,12 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
     std::vector<geometry_msgs::Point> human_pos_costmap;
 
     if(cfg_.robot.is_real){
-  		transformStamped = tf_->lookupTransform("odom_combined","map",ros::Time(0),ros::Duration(0.5));
+      transformStamped = tf_->lookupTransform(
+        global_frame_,
+        tracked_humans_.header.frame_id,
+        ros::Time(0),
+        ros::Duration(0.5)
+      );
   		tf2::doTransform(v1,v1,transformStamped);
   		tf2::doTransform(v2,v2,transformStamped);
   		tf2::doTransform(v3,v3,transformStamped);
