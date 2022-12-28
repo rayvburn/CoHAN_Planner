@@ -304,7 +304,7 @@ void HATebConfig::loadRosParamFromNodeHandle(const ros::NodeHandle& nh)
   checkDeprecated(nh);
 }
 
-void HATebConfig::reconfigure(HATebLocalPlannerReconfigureConfig& cfg)
+void HATebConfig::reconfigure(cohan_local_planner::HATebLocalPlannerReconfigureConfig& cfg)
 {
   boost::mutex::scoped_lock l(config_mutex_);
 

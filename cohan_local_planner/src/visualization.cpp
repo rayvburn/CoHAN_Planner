@@ -58,7 +58,7 @@
 #define HUMAN_TRAJS_TIME_TOPIC "human_trajs_time"
 #define HUMAN_PATHS_TIME_TOPIC "human_plans_time"
 #define DEFAUTL_SEGMENT_TYPE human_msgs::TrackedSegmentType::TORSO
-#include <hateb_local_planner/FeedbackMsg.h>
+#include <cohan_local_planner/FeedbackMsg.h>
 #include <hateb_local_planner/optimal_planner.h>
 #include <hateb_local_planner/visualization.h>
 #include <human_msgs/TrackedHumans.h>
@@ -105,7 +105,7 @@ void TebVisualization::initialize(ros::NodeHandle& nh, const HATebConfig& cfg)
   teb_marker_pub_ =
       nh.advertise<visualization_msgs::Marker>("teb_markers", 1000);
   feedback_pub_ =
-      nh.advertise<hateb_local_planner::FeedbackMsg>("teb_feedback", 10);
+      nh.advertise<cohan_local_planner::FeedbackMsg>("teb_feedback", 10);
   robot_traj_time_pub_ =
       nh.advertise<human_msgs::TimeToGoal>(ROBOT_TRAJ_TIME_TOPIC, 1);
   robot_path_time_pub_ =
@@ -1058,7 +1058,7 @@ if ( printErrorWhenNotInitialized() )
 void TebVisualization::publishFeedbackMessage(const std::vector< boost::shared_ptr<TebOptimalPlanner> >& teb_planners,
                                               unsigned int selected_trajectory_idx, const ObstContainer& obstacles)
 {
-  FeedbackMsg msg;
+  cohan_local_planner::FeedbackMsg msg;
   msg.header.stamp = ros::Time::now();
   msg.header.frame_id = cfg_->map_frame;
   msg.selected_trajectory_idx = selected_trajectory_idx;
@@ -1099,7 +1099,7 @@ void TebVisualization::publishFeedbackMessage(const std::vector< boost::shared_p
 
 void TebVisualization::publishFeedbackMessage(const TebOptimalPlanner& teb_planner, const ObstContainer& obstacles)
 {
-  FeedbackMsg msg;
+  cohan_local_planner::FeedbackMsg msg;
   msg.header.stamp = ros::Time::now();
   msg.header.frame_id = cfg_->map_frame;
   msg.selected_trajectory_idx = 0;

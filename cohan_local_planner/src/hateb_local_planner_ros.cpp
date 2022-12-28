@@ -93,7 +93,7 @@ HATebLocalPlannerROS::~HATebLocalPlannerROS()
 {
 }
 
-void HATebLocalPlannerROS::reconfigureCB(HATebLocalPlannerReconfigureConfig& config, uint32_t level)
+void HATebLocalPlannerROS::reconfigureCB(cohan_local_planner::HATebLocalPlannerReconfigureConfig& config, uint32_t level)
 {
   cfg_.reconfigure(config);
 }
@@ -184,8 +184,8 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     odom_helper_.setOdomTopic(cfg_.odom_topic);
 
     // setup dynamic reconfigure
-    dynamic_recfg_ = boost::make_shared< dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig> >(nh);
-    dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig>::CallbackType cb = boost::bind(&HATebLocalPlannerROS::reconfigureCB, this, _1, _2);
+    dynamic_recfg_ = boost::make_shared< dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig> >(nh);
+    dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig>::CallbackType cb = boost::bind(&HATebLocalPlannerROS::reconfigureCB, this, _1, _2);
     dynamic_recfg_->setCallback(cb);
 
     // validate optimization footprint and costmap footprint
@@ -216,7 +216,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
 
     humans_sub_ = nh.subscribe(HUMANS_SUB_TOPIC, 1, &HATebLocalPlannerROS::humansCB, this);
 
-    // op_costs_pub_ = nh.advertise<hateb_local_planner::OptimizationCostArray>( OP_COSTS_TOPIC, 1);
+    // op_costs_pub_ = nh.advertise<cohan_local_planner::OptimizationCostArray>( OP_COSTS_TOPIC, 1);
     // robot_pose_pub_ = nh.advertise<geometry_msgs::Pose>(ROB_POS_TOPIC, 1);
     humans_states_pub_ = nh.advertise<human_msgs::StateArray>("humans_states",1);
     log_pub_ = nh.advertise<std_msgs::String>(HATEB_LOG,1);
@@ -346,8 +346,8 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
     // a given ID was NOT found in the storage
     if (human_vels_it == human_vels.end()) {
       human_nominal_vels[human.track_id] = 0.0;
-      // previously also hateb_local_planner::HumanState::STATIC
-      humans_states_[human.track_id] = hateb_local_planner::HumanState::NO_STATE;
+      // previously also HumanState::STATIC
+      humans_states_[human.track_id] = HumanState::NO_STATE;
     }
     for (auto &segment : human.segments){
       if(segment.type==DEFAULT_HUMAN_SEGMENT){
@@ -359,8 +359,8 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
         human_vels[human.track_id].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
 
         if((abs(segment.twist.twist.linear.x)+abs(segment.twist.twist.linear.y)+abs(segment.twist.twist.angular.z)) > 0.0001){
-          if(humans_states_[human.track_id] != hateb_local_planner::HumanState::BLOCKED){
-            humans_states_[human.track_id] = hateb_local_planner::HumanState::MOVING;
+          if(humans_states_[human.track_id] != HumanState::BLOCKED){
+            humans_states_[human.track_id] = HumanState::MOVING;
           }
         }
 
@@ -464,8 +464,8 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
 
       if(hum_move_dist<0.0001){
         human_still[tracked_human.track_id] = true;
-        if(humans_states_[tracked_human.track_id] == hateb_local_planner::HumanState::MOVING) {
-          humans_states_[tracked_human.track_id] = hateb_local_planner::HumanState::STOPPED;
+        if(humans_states_[tracked_human.track_id] == HumanState::MOVING) {
+          humans_states_[tracked_human.track_id] = HumanState::STOPPED;
         }
       }
       else{
@@ -574,8 +574,8 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
 			if(!cell_collision)
 			{
         visible_human_ids.push_back(hum_id);
-        if (humans_states_[hum_id] == hateb_local_planner::HumanState::NO_STATE) {
-          humans_states_[hum_id] == hateb_local_planner::HumanState::STATIC;
+        if (humans_states_[hum_id] == HumanState::NO_STATE) {
+          humans_states_[hum_id] == HumanState::STATIC;
         }
 			}
     }
@@ -670,7 +670,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
   if(reset_states){
     for (auto& pair: humans_states_) {
-      pair.second = hateb_local_planner::HumanState::NO_STATE;
+      pair.second = HumanState::NO_STATE;
     }
     reset_states=false;
   }
@@ -708,7 +708,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
           if(!stuck)
             ROS_INFO("I am stuck");
           stuck = true;
-          humans_states_[closest_human_id] = hateb_local_planner::HumanState::BLOCKED;
+          humans_states_[closest_human_id] = HumanState::BLOCKED;
           stuck_human_id = closest_human_id;
           isMode = 2;
         }
@@ -832,7 +832,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   // make humans states from the class member map
   human_msgs::StateArray state_array;
   for (const auto& pair: humans_states_) {
-    state_array.states.push_back(static_cast<hateb_local_planner::HumanState>(pair.second));
+    state_array.states.push_back(static_cast<HumanState>(pair.second));
   }
   humans_states_pub_.publish(state_array);
 
@@ -874,8 +874,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
             backed_off = false;
             stuck = false;
             // goal_ctrl = true;
-            if (humans_states_[visible_human_ids[0]] != hateb_local_planner::HumanState::MOVING) {
-              humans_states_[visible_human_ids[0]] = hateb_local_planner::HumanState::STATIC;
+            if (humans_states_[visible_human_ids[0]] != HumanState::MOVING) {
+              humans_states_[visible_human_ids[0]] = HumanState::STATIC;
             }
           }
         }
@@ -891,8 +891,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       change_mode = 0;
       backed_off = false;
       stuck = false;
-      if (humans_states_[visible_human_ids[0]] != hateb_local_planner::HumanState::MOVING) {
-        humans_states_[visible_human_ids[0]] = hateb_local_planner::HumanState::STATIC;
+      if (humans_states_[visible_human_ids[0]] != HumanState::MOVING) {
+        humans_states_[visible_human_ids[0]] = HumanState::STATIC;
       }
     }
 
@@ -1157,7 +1157,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   // Now perform the actual
   auto plan_start_time = ros::Time::now();
   // bool success = planner_->plan(robot_pose_, robot_goal_, robot_vel_, cfg_.goal_tolerance.free_goal_vel); // straight line init
-  hateb_local_planner::OptimizationCostArray op_costs;
+  cohan_local_planner::OptimizationCostArray op_costs;
 
   double dt_resize=cfg_.trajectory.dt_ref;
   double dt_hyst_resize=cfg_.trajectory.dt_hysteresis;
@@ -2440,8 +2440,8 @@ void HATebLocalPlannerROS::resetHumansPrediction() {
 }
 
 bool HATebLocalPlannerROS::optimizeStandalone(
-    hateb_local_planner::Optimize::Request &req,
-    hateb_local_planner::Optimize::Response &res) {
+    cohan_local_planner::Optimize::Request &req,
+    cohan_local_planner::Optimize::Response &res) {
   ROS_INFO("optimize service called");
   auto start_time = ros::Time::now();
 
@@ -2563,7 +2563,7 @@ bool HATebLocalPlannerROS::optimizeStandalone(
   // now perform the actual planning
   auto plan_start_time = ros::Time::now();
   geometry_msgs::Twist robot_vel_twist;
-  hateb_local_planner::OptimizationCostArray op_costs;
+  cohan_local_planner::OptimizationCostArray op_costs;
 
   bool success = planner_->plan(transformed_plan, &robot_vel_,
                                 cfg_.goal_tolerance.free_goal_vel,
@@ -2658,8 +2658,8 @@ bool HATebLocalPlannerROS::optimizeStandalone(
 }
 
 bool HATebLocalPlannerROS::setApproachID(
-    hateb_local_planner::Approach::Request &req,
-    hateb_local_planner::Approach::Response &res) {
+    cohan_local_planner::Approach::Request &req,
+    cohan_local_planner::Approach::Response &res) {
   if (cfg_.planning_mode == 2) {
     cfg_.approach.approach_id = req.human_id;
     res.message +=

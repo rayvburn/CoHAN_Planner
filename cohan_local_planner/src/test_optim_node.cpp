@@ -54,7 +54,7 @@ TebVisualizationPtr visual;
 std::vector<ObstaclePtr> obst_vector;
 ViaPointContainer via_points;
 HATebConfig config;
-boost::shared_ptr< dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig> > dynamic_recfg;
+boost::shared_ptr< dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig> > dynamic_recfg;
 ros::Subscriber custom_obst_sub;
 ros::Subscriber via_points_sub;
 ros::Subscriber clicked_points_sub;
@@ -64,7 +64,7 @@ unsigned int no_fixed_obstacles;
 // =========== Function declarations =============
 void CB_mainCycle(const ros::TimerEvent& e);
 void CB_publishCycle(const ros::TimerEvent& e);
-void CB_reconfigure(HATebLocalPlannerReconfigureConfig& reconfig, uint32_t level);
+void CB_reconfigure(cohan_local_planner::HATebLocalPlannerReconfigureConfig& reconfig, uint32_t level);
 void CB_customObstacle(const costmap_converter::ObstacleArrayMsg::ConstPtr& obst_msg);
 void CreateInteractiveMarker(const double& init_x, const double& init_y, unsigned int id, std::string frame, interactive_markers::InteractiveMarkerServer* marker_server, interactive_markers::InteractiveMarkerServer::FeedbackCallback feedback_cb);
 void CB_obstacle_marker(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
@@ -87,8 +87,8 @@ int main( int argc, char** argv )
   ros::Timer publish_timer = n.createTimer(ros::Duration(0.1), CB_publishCycle);
 
   // setup dynamic reconfigure
-  dynamic_recfg = boost::make_shared< dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig> >(n);
-  dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig>::CallbackType cb = boost::bind(CB_reconfigure, _1, _2);
+  dynamic_recfg = boost::make_shared< dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig> >(n);
+  dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig>::CallbackType cb = boost::bind(CB_reconfigure, _1, _2);
   dynamic_recfg->setCallback(cb);
 
   // setup callback for custom obstacles
@@ -176,7 +176,7 @@ void CB_publishCycle(const ros::TimerEvent& e)
   visual->publishViaPoints(via_points);
 }
 
-void CB_reconfigure(HATebLocalPlannerReconfigureConfig& reconfig, uint32_t level)
+void CB_reconfigure(cohan_local_planner::HATebLocalPlannerReconfigureConfig& reconfig, uint32_t level)
 {
   config.reconfigure(reconfig);
 }

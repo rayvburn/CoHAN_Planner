@@ -164,7 +164,7 @@ public:
                     const geometry_msgs::Twist* start_vel = NULL,
                     bool free_goal_vel = false,
                     const HumanPlanVelMap *initial_human_plan_vels =  NULL,
-                    hateb_local_planner::OptimizationCostArray *op_costs = NULL,
+                    cohan_local_planner::OptimizationCostArray *op_costs = NULL,
                     double dt_ref=0.4,
                     double dt_hyst=0.1);
 
@@ -179,7 +179,7 @@ public:
    *		      otherwise the final velocity will be zero (default: false)
    * @return \c true if planning was successful, \c false otherwise
    */
-  virtual bool plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, hateb_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref=0.4, double dt_hyst=0.1);
+  virtual bool plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, cohan_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref=0.4, double dt_hyst=0.1);
 
   /**
    * @brief Plan a trajectory between a given start and goal pose.
@@ -192,7 +192,7 @@ public:
    *		      otherwise the final velocity will be zero (default: false)
    * @return \c true if planning was successful, \c false otherwise
    */
-  virtual bool plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false,  double pre_plan_time=0.0, hateb_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref = 0.4, double dt_hyst=0.1);
+  virtual bool plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false,  double pre_plan_time=0.0, cohan_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref = 0.4, double dt_hyst=0.1);
 
   /**
    * @brief Get the velocity command from a previously optimized plan to control the robot at the current sampling interval.
@@ -443,8 +443,8 @@ public:
    */
   bool computeStartOrientation(const TebOptimalPlannerPtr plan, const double len_orientation_vector, double& orientation);
 
-  virtual void getFullTrajectory(std::vector<TrajectoryPointMsg> &trajectory) const;
-  virtual void getFullHumanTrajectory(const uint64_t human_id, std::vector<TrajectoryPointMsg> &human_trajectory);
+  virtual void getFullTrajectory(std::vector<cohan_local_planner::TrajectoryPointMsg> &trajectory) const;
+  virtual void getFullHumanTrajectory(const uint64_t human_id, std::vector<cohan_local_planner::TrajectoryPointMsg> &human_trajectory);
 
   /**
    * @brief Access config (read-only)

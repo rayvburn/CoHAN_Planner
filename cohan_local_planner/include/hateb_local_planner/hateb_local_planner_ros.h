@@ -65,8 +65,8 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <costmap_converter/ObstacleMsg.h>
-#include <hateb_local_planner/Optimize.h>
-#include <hateb_local_planner/Approach.h>
+#include <cohan_local_planner/Optimize.h>
+#include <cohan_local_planner/Approach.h>
 
 // human data
 #include <human_path_prediction/HumanPosePredict.h>
@@ -95,7 +95,7 @@
 
 
 // dynamic reconfigure
-#include <hateb_local_planner/HATebLocalPlannerReconfigureConfig.h>
+#include <cohan_local_planner/HATebLocalPlannerReconfigureConfig.h>
 #include <dynamic_reconfigure/server.h>
 
 // boost classes
@@ -304,7 +304,7 @@ protected:
     * @param config Reference to the dynamic reconfigure config
     * @param level Dynamic reconfigure level
     */
-  void reconfigureCB(HATebLocalPlannerReconfigureConfig& config, uint32_t level);
+  void reconfigureCB(cohan_local_planner::HATebLocalPlannerReconfigureConfig& config, uint32_t level);
   /**
    * @brief Callback for custom obstacles that are not obtained from the costmap
    * @param obst_msg pointer to the message containing a list of polygon shaped
@@ -460,11 +460,11 @@ protected:
 
 
   // Standalone optimization for analysis
-  bool optimizeStandalone(hateb_local_planner::Optimize::Request &req,
-                          hateb_local_planner::Optimize::Response &res);
+  bool optimizeStandalone(cohan_local_planner::Optimize::Request &req,
+                          cohan_local_planner::Optimize::Response &res);
   // Apporach Mode
-  bool setApproachID(hateb_local_planner::Approach::Request &req,
-                     hateb_local_planner::Approach::Response &res);
+  bool setApproachID(cohan_local_planner::Approach::Request &req,
+                     cohan_local_planner::Approach::Response &res);
 
 
 
@@ -507,7 +507,7 @@ private:
   pluginlib::ClassLoader<costmap_converter::BaseCostmapToPolygons> costmap_converter_loader_; //!< Load costmap converter plugins at runtime
   boost::shared_ptr<costmap_converter::BaseCostmapToPolygons> costmap_converter_; //!< Store the current costmap_converter
 
-  boost::shared_ptr< dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
+  boost::shared_ptr< dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
   ros::Subscriber custom_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
   boost::mutex custom_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
   costmap_converter::ObstacleArrayMsg custom_obstacle_msg_; //!< Copy of the most recent obstacle message

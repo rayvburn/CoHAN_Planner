@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>hateb_local_planner</name>
+  <name>cohan_local_planner</name>
   <version>0.1.0</version>
   <description>
-    The hateb_local_planner package implements a plugin to the base_local_planner of the 2D navigation stack.
+    The cohan_local_planner package implements a plugin to the base_local_planner of the 2D navigation stack.
     It implements a human-robot multi-context and cooperative navigation planner that predicts trajectories for human and plans accordingly
     a trajectory for robot that satisfies certain kinodynamic and social constraints.
   </description>
@@ -47,7 +47,7 @@
   <depend>visualization_msgs</depend>
 
   <export>
-    <nav_core plugin="${prefix}/hateb_local_planner_plugin.xml"/>
-    <mbf_costmap_core plugin="${prefix}/hateb_local_planner_plugin.xml"/>
+    <nav_core plugin="${prefix}/cohan_local_planner_plugin.xml"/>
+    <mbf_costmap_core plugin="${prefix}/cohan_local_planner_plugin.xml"/>
   </export>
 </package>

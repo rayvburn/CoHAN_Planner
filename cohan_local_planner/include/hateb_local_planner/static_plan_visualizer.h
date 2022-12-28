@@ -57,7 +57,7 @@
  #include <human_msgs/HumanTrajectoryArray.h>
  #include <human_msgs/TrackedSegmentType.h>
 
- #include <hateb_local_planner/Optimize.h>
+ #include <cohan_local_planner/Optimize.h>
  #include <std_srvs/Trigger.h>
  #include <std_srvs/SetBool.h>
  #include <std_srvs/TriggerRequest.h>
