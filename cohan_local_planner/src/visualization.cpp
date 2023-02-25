@@ -691,9 +691,9 @@ void TebVisualization::publishTrackedHumans(const human_msgs::TrackedHumansConst
     for(auto &human : humans->humans)
     {  visualization_msgs::Marker marker,arrow;
         // Set the frame ID and timestamp.  See the TF tutorials for information on these.
-        marker.header.frame_id = "map";
+        marker.header.frame_id = humans->header.frame_id;
         marker.header.stamp = ros::Time::now();
-        arrow.header.frame_id = "map";
+        arrow.header.frame_id = humans->header.frame_id;
         arrow.header.stamp = ros::Time::now();
 
       for(auto segment : human.segments)

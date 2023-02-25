@@ -75,7 +75,7 @@ void StaticPlanVisualization::UpdateStartPoses(const human_msgs::TrackedHumans &
       if(segment.type == DEFAULT_HUMAN_PART){
         geometry_msgs::PoseStamped hum_pose;
         hum_pose.pose = segment.pose.pose;
-        hum_pose.header.frame_id ="map";
+        hum_pose.header.frame_id = tracked_humans.header.frame_id;
         hum_pose.header.stamp = ros::Time::now();
         humans_start_poses.push_back(hum_pose);
       }
