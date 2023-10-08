@@ -65,8 +65,8 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <costmap_converter/ObstacleMsg.h>
-#include <hateb_local_planner/Optimize.h>
-#include <hateb_local_planner/Approach.h>
+#include <cohan_local_planner/Optimize.h>
+#include <cohan_local_planner/Approach.h>
 
 // human data
 #include <human_path_prediction/HumanPosePredict.h>
@@ -95,7 +95,7 @@
 
 
 // dynamic reconfigure
-#include <hateb_local_planner/HATebLocalPlannerReconfigureConfig.h>
+#include <cohan_local_planner/HATebLocalPlannerReconfigureConfig.h>
 #include <dynamic_reconfigure/server.h>
 
 // boost classes
@@ -106,6 +106,8 @@
 // Backoff recovery
 #include <hateb_local_planner/backoff.h>
 
+// STL
+#include <map>
 
 namespace hateb_local_planner
 {
@@ -302,7 +304,7 @@ protected:
     * @param config Reference to the dynamic reconfigure config
     * @param level Dynamic reconfigure level
     */
-  void reconfigureCB(HATebLocalPlannerReconfigureConfig& config, uint32_t level);
+  void reconfigureCB(cohan_local_planner::HATebLocalPlannerReconfigureConfig& config, uint32_t level);
   /**
    * @brief Callback for custom obstacles that are not obtained from the costmap
    * @param obst_msg pointer to the message containing a list of polygon shaped
@@ -458,11 +460,11 @@ protected:
 
 
   // Standalone optimization for analysis
-  bool optimizeStandalone(hateb_local_planner::Optimize::Request &req,
-                          hateb_local_planner::Optimize::Response &res);
+  bool optimizeStandalone(cohan_local_planner::Optimize::Request &req,
+                          cohan_local_planner::Optimize::Response &res);
   // Apporach Mode
-  bool setApproachID(hateb_local_planner::Approach::Request &req,
-                     hateb_local_planner::Approach::Response &res);
+  bool setApproachID(cohan_local_planner::Approach::Request &req,
+                     cohan_local_planner::Approach::Response &res);
 
 
 
@@ -505,7 +507,7 @@ private:
   pluginlib::ClassLoader<costmap_converter::BaseCostmapToPolygons> costmap_converter_loader_; //!< Load costmap converter plugins at runtime
   boost::shared_ptr<costmap_converter::BaseCostmapToPolygons> costmap_converter_; //!< Store the current costmap_converter
 
-  boost::shared_ptr< dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
+  boost::shared_ptr< dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig> > dynamic_recfg_; //!< Dynamic reconfigure server to allow config modifications at runtime
   ros::Subscriber custom_obst_sub_; //!< Subscriber for custom obstacles received via a ObstacleMsg.
   boost::mutex custom_obst_mutex_; //!< Mutex that locks the obstacle array (multi-threaded)
   costmap_converter::ObstacleArrayMsg custom_obstacle_msg_; //!< Copy of the most recent obstacle message
@@ -556,7 +558,7 @@ private:
   //Planner State determining parameters
   // different flags, times and measures
   bool isDistunderThreshold, isDistMax, stuck, goal_ctrl, reset_states, ext_goal, backed_off;
-  std::vector<bool> human_still;
+  std::map<unsigned int, bool> human_still;
   ros::Time last_position_time, last_omega_sign_change_;
   double last_omega_;
 
@@ -564,10 +566,10 @@ private:
   int isMode, change_mode;
 
   // Human ids, states and velocities
-  std::vector<int> visible_human_ids; // List of visible humans
-  std::vector<std::vector<double>> human_vels; // List of human velocities over time
-  std::vector<double> human_nominal_vels; // Nominal velocities  of humans based on moving average filter
-  human_msgs::StateArray humans_states_; // State of humans
+  std::vector<int> visible_human_ids; // List of visible humans, sorted, closest human is represented by the first ID
+  std::map<unsigned int, std::vector<double>> human_vels; // List of human velocities over time
+  std::map<unsigned int, double> human_nominal_vels; // Nominal velocities  of humans based on moving average filter
+  std::map<unsigned int, int8_t> humans_states_; // State of humans
 
   // Backoff recovery params
   int stuck_human_id; // Stores the human id who blocked the robot's way during backoff recovery

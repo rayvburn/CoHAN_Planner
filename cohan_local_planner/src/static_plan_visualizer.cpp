@@ -58,7 +58,7 @@ void StaticPlanVisualization::initialize()
   if(!initialized_){
     ros::NodeHandle nh("~");
     getPlan_client  = nh.serviceClient<nav_msgs::GetPlan>(GET_PLAN_SRV, true);
-    optimize_client = nh.serviceClient<hateb_local_planner::Optimize>(OPTIMIZE_SRV, true);
+    optimize_client = nh.serviceClient<cohan_local_planner::Optimize>(OPTIMIZE_SRV, true);
     humans_sub_ = nh.subscribe(HUMANS_SUB, 1, &StaticPlanVisualization::UpdateStartPoses, this);
     robot_goal_sub_ = nh.subscribe(ROBOT_GOAL_SUB, 1, &StaticPlanVisualization::UpdateGoalsAndOptimize, this);
     optimize_srv_ = nh.advertiseService("optimize_srv", &StaticPlanVisualization::optimize_srv, this);
@@ -75,7 +75,7 @@ void StaticPlanVisualization::UpdateStartPoses(const human_msgs::TrackedHumans &
       if(segment.type == DEFAULT_HUMAN_PART){
         geometry_msgs::PoseStamped hum_pose;
         hum_pose.pose = segment.pose.pose;
-        hum_pose.header.frame_id ="map";
+        hum_pose.header.frame_id = tracked_humans.header.frame_id;
         hum_pose.header.stamp = ros::Time::now();
         humans_start_poses.push_back(hum_pose);
       }
@@ -167,7 +167,7 @@ void StaticPlanVisualization::UpdateGoalsAndOptimize(const geometry_msgs::PointS
   robot_plan = robot_plan_srv.response.plan;
 
   if(got_human_plan && got_robot_plan){
-    hateb_local_planner::Optimize optim_srv;
+    cohan_local_planner::Optimize optim_srv;
 
     optim_srv.request.robot_plan = robot_plan_srv.response.plan;
     optim_srv.request.human_path_array = hum_path_arr;
@@ -183,7 +183,7 @@ void StaticPlanVisualization::UpdateGoalsAndOptimize(const geometry_msgs::PointS
 
 bool StaticPlanVisualization::optimize_srv(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res){
     if(got_human_plan && got_robot_plan){
-      hateb_local_planner::Optimize optim_srv;
+      cohan_local_planner::Optimize optim_srv;
 
       optim_srv.request.robot_plan = robot_plan;
       if(req.data)

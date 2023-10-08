@@ -208,14 +208,14 @@ boost::shared_ptr<g2o::SparseOptimizer> TebOptimalPlanner::initOptimizer()
 }
 
 bool TebOptimalPlanner::optimizeTEB(int iterations_innerloop, int iterations_outerloop, bool compute_cost_afterwards,
-                                    double obst_cost_scale, double viapoint_cost_scale, bool alternative_time_cost, hateb_local_planner::OptimizationCostArray *op_costs){
+                                    double obst_cost_scale, double viapoint_cost_scale, bool alternative_time_cost, cohan_local_planner::OptimizationCostArray *op_costs){
 
   optimizeTEB(iterations_innerloop,iterations_outerloop,compute_cost_afterwards,obst_cost_scale,viapoint_cost_scale,alternative_time_cost,op_costs,cfg_->trajectory.dt_ref,cfg_->trajectory.dt_hysteresis);
 
 }
 
 bool TebOptimalPlanner::optimizeTEB(int iterations_innerloop, int iterations_outerloop, bool compute_cost_afterwards,
-                                    double obst_cost_scale, double viapoint_cost_scale, bool alternative_time_cost, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+                                    double obst_cost_scale, double viapoint_cost_scale, bool alternative_time_cost, cohan_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
 {
   if (cfg_->optim.optimization_activate==false)
     return false;
@@ -285,7 +285,7 @@ void TebOptimalPlanner::setVelocityGoal(const geometry_msgs::Twist& vel_goal)
   vel_goal_.second = vel_goal;
 }
 
-bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& initial_plan, const geometry_msgs::Twist* start_vel, bool free_goal_vel, const HumanPlanVelMap *initial_human_plan_vel_map, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& initial_plan, const geometry_msgs::Twist* start_vel, bool free_goal_vel, const HumanPlanVelMap *initial_human_plan_vel_map, cohan_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
 {
   // std::cout << "I am in the traj plan function" << '\n';
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
@@ -456,7 +456,7 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
     }
     else
     {
-      ROS_INFO("no or multiple humans for approaching %d", initial_human_plan_vel_map->size());
+      ROS_INFO("no or multiple humans for approaching %lu", initial_human_plan_vel_map->size());
       // set approach_pose_ same as the current robot pose
       approach_pose_ = initial_plan.front();
     }
@@ -472,8 +472,8 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
   bool teb_opt_result = optimizeTEB(cfg_->optim.no_inner_iterations, cfg_->optim.no_outer_iterations, true, 1.0, 1.0, false, op_costs, dt_ref, dt_hyst);
 
   if (op_costs) {
-    hateb_local_planner::OptimizationCost op_cost;
-    op_cost.type = hateb_local_planner::OptimizationCost::HUMAN_ROBOT_MIN_DIST;
+    cohan_local_planner::OptimizationCost op_cost;
+    op_cost.type = cohan_local_planner::OptimizationCost::HUMAN_ROBOT_MIN_DIST;
     op_cost.cost = current_human_robot_min_dist;
     op_costs->costs.push_back(op_cost);
   }
@@ -498,7 +498,7 @@ bool TebOptimalPlanner::plan(const std::vector<geometry_msgs::PoseStamped>& init
 }
 
 
-bool TebOptimalPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool TebOptimalPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, cohan_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
 {
   auto start_time = ros::Time::now();
   PoseSE2 start_(start);
@@ -509,7 +509,7 @@ bool TebOptimalPlanner::plan(const tf::Pose& start, const tf::Pose& goal, const 
   return plan(start_, goal_, vel, free_goal_vel, pre_plan_time.toSec(), op_costs, dt_ref, dt_hyst);
 }
 
-bool TebOptimalPlanner::plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, double pre_plan_time, hateb_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
+bool TebOptimalPlanner::plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel, bool free_goal_vel, double pre_plan_time, cohan_local_planner::OptimizationCostArray *op_costs, double dt_ref, double dt_hyst)
 {
   ROS_ASSERT_MSG(initialized_, "Call initialize() first.");
   auto prep_start_time = ros::Time::now();
@@ -1904,7 +1904,7 @@ void TebOptimalPlanner::AddVertexEdgesApproach() {
   }
 }
 
-void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoint_cost_scale, bool alternative_time_cost, hateb_local_planner::OptimizationCostArray *op_costs)
+void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoint_cost_scale, bool alternative_time_cost, cohan_local_planner::OptimizationCostArray *op_costs)
 {
   // check if graph is empty/exist  -> important if function is called between buildGraph and optimizeGraph/clearGraph
   bool graph_exist_flag(false);
@@ -2224,93 +2224,93 @@ void TebOptimalPlanner::computeCurrentCost(double obst_cost_scale, double viapoi
     // }
     // outdata.close();
 
-    hateb_local_planner::OptimizationCost optc;
+    cohan_local_planner::OptimizationCost optc;
 
-    optc.type = hateb_local_planner::OptimizationCost::TIME_OPTIMALITY;
+    optc.type = cohan_local_planner::OptimizationCost::TIME_OPTIMALITY;
     optc.cost = time_opt_cost;
     optc.costs_arr = time_opt_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::KINEMATIC_DD;
+    optc.type = cohan_local_planner::OptimizationCost::KINEMATIC_DD;
     optc.cost = kinematics_dd_cost;
     optc.costs_arr = kinematics_dd_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::KINEMATIC_CL;
+    optc.type = cohan_local_planner::OptimizationCost::KINEMATIC_CL;
     optc.cost = kinematics_cl_cost;
     optc.costs_arr = kinematics_cl_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::ROBOT_VEL;
+    optc.type = cohan_local_planner::OptimizationCost::ROBOT_VEL;
     optc.cost = robot_vel_holo_cost;
     optc.costs_arr = robot_vel_holo_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_VEL;
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_VEL;
     optc.cost = human_vel_holo_cost;
     optc.costs_arr = human_vel_holo_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::ROBOT_ACC;
+    optc.type = cohan_local_planner::OptimizationCost::ROBOT_ACC;
     optc.cost = robot_acc_holo_cost;
     optc.costs_arr = robot_acc_holo_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_ACC;
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_ACC;
     optc.cost = human_acc_holo_cost;
     optc.costs_arr = human_acc_holo_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::OBSTACLE;
+    optc.type = cohan_local_planner::OptimizationCost::OBSTACLE;
     // optc.cost = obst_cost;
     optc.cost = obs_first;
     optc.costs_arr = obst_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::DYNAMIC_OBSTACLE;
+    optc.type = cohan_local_planner::OptimizationCost::DYNAMIC_OBSTACLE;
     optc.cost = dyn_obst_cost;
     optc.costs_arr = dyn_obst_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::VIA_POINT;
+    optc.type = cohan_local_planner::OptimizationCost::VIA_POINT;
     optc.cost = via_cost;
     optc.costs_arr = via_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_ROBOT_SAFETY;
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_ROBOT_SAFETY;
     optc.cost = hr_safety_cost;
     // optc.cost = safety_first;
     optc.costs_arr = hr_safety_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_HUMAN_SAFETY;
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_HUMAN_SAFETY;
     optc.cost = hh_safety_cost;
     optc.costs_arr = hh_safety_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_ROBOT_TTC;
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_ROBOT_TTC;
     optc.cost = hr_ttc_cost;
     optc.costs_arr = hr_ttc_cost_vector;
     // optc.cost = ttc_first;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_ROBOT_TTClosest;                //michele
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_ROBOT_TTClosest;                //michele
     optc.cost = hr_ttclosest_cost;
     optc.costs_arr = hr_ttclosest_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_ROBOT_TTCplus;                //michele
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_ROBOT_TTCplus;                //michele
     optc.cost = hr_ttcplus_cost;
     optc.costs_arr = hr_ttcplus_cost_vector;
     // optc.cost = ttcplus_first;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_ROBOT_REL_VEL;
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_ROBOT_REL_VEL;
     optc.cost = hr_rel_vel_cost;
     optc.costs_arr = hr_rel_vel_cost_vector;
     op_costs->costs.push_back(optc);
 
-    optc.type = hateb_local_planner::OptimizationCost::HUMAN_ROBOT_VISIBILITY;
+    optc.type = cohan_local_planner::OptimizationCost::HUMAN_ROBOT_VISIBILITY;
     optc.cost = hr_visi_cost;
     optc.costs_arr = hr_visi_cost_vector;
     // optc.cost = visible_first;
@@ -2441,7 +2441,7 @@ void TebOptimalPlanner::getVelocityProfile(std::vector<geometry_msgs::Twist>& ve
   velocity_profile.back().angular.z = vel_goal_.second.angular.z;
 }
 
-void TebOptimalPlanner::getFullTrajectory(std::vector<TrajectoryPointMsg>& trajectory) const
+void TebOptimalPlanner::getFullTrajectory(std::vector<cohan_local_planner::TrajectoryPointMsg>& trajectory) const
 {
   int n = teb_.sizePoses();
 
@@ -2453,7 +2453,7 @@ void TebOptimalPlanner::getFullTrajectory(std::vector<TrajectoryPointMsg>& traje
   double curr_time = 0;
 
   // start
-  TrajectoryPointMsg& start = trajectory.front();
+  cohan_local_planner::TrajectoryPointMsg& start = trajectory.front();
   teb_.Pose(0).toPoseMsg(start.pose);
   start.velocity.linear.z = 0;
   start.velocity.angular.x = start.velocity.angular.y = 0;
@@ -2467,7 +2467,7 @@ void TebOptimalPlanner::getFullTrajectory(std::vector<TrajectoryPointMsg>& traje
   // intermediate points
   for (int i=1; i < n-1; ++i)
   {
-    TrajectoryPointMsg& point = trajectory[i];
+    cohan_local_planner::TrajectoryPointMsg& point = trajectory[i];
     teb_.Pose(i).toPoseMsg(point.pose);
     point.velocity.linear.z = 0;
     point.velocity.angular.x = point.velocity.angular.y = 0;
@@ -2483,7 +2483,7 @@ void TebOptimalPlanner::getFullTrajectory(std::vector<TrajectoryPointMsg>& traje
   }
 
   // goal
-  TrajectoryPointMsg& goal = trajectory.back();
+  cohan_local_planner::TrajectoryPointMsg& goal = trajectory.back();
   teb_.BackPose().toPoseMsg(goal.pose);
   goal.velocity.linear.z = 0;
   goal.velocity.angular.x = goal.velocity.angular.y = 0;
@@ -2493,7 +2493,7 @@ void TebOptimalPlanner::getFullTrajectory(std::vector<TrajectoryPointMsg>& traje
   goal.time_from_start.fromSec(curr_time);
 }
 
-void TebOptimalPlanner::getFullHumanTrajectory(const uint64_t human_id, std::vector<TrajectoryPointMsg> &human_trajectory) {
+void TebOptimalPlanner::getFullHumanTrajectory(const uint64_t human_id, std::vector<cohan_local_planner::TrajectoryPointMsg> &human_trajectory) {
   auto human_teb_it = humans_tebs_map_.find(human_id);
   if (human_teb_it != humans_tebs_map_.end()) {
     auto &human_teb = human_teb_it->second;
@@ -2508,7 +2508,7 @@ void TebOptimalPlanner::getFullHumanTrajectory(const uint64_t human_id, std::vec
     double curr_time = 0;
 
     // start
-    TrajectoryPointMsg &start = human_trajectory.front();
+    cohan_local_planner::TrajectoryPointMsg &start = human_trajectory.front();
     // std::cout << "Human Teb Pose: 0\n" << start.pose.position << '\n';
     human_teb.Pose(0).toPoseMsg(start.pose);
     start.velocity.linear.z = 0;
@@ -2523,7 +2523,7 @@ void TebOptimalPlanner::getFullHumanTrajectory(const uint64_t human_id, std::vec
 
     // intermediate points
     for (int i = 1; i < human_teb_size - 1; ++i) {
-      TrajectoryPointMsg &point = human_trajectory[i];
+      cohan_local_planner::TrajectoryPointMsg &point = human_trajectory[i];
       human_teb.Pose(i).toPoseMsg(point.pose);
       // std::cout << "Human Teb Pose: " << i << '\n' << point.pose.position << '\n';
       point.velocity.linear.z = 0;
@@ -2540,7 +2540,7 @@ void TebOptimalPlanner::getFullHumanTrajectory(const uint64_t human_id, std::vec
       curr_time += human_teb.TimeDiff(i);
     }
     // goal
-    TrajectoryPointMsg &goal = human_trajectory.back();
+    cohan_local_planner::TrajectoryPointMsg &goal = human_trajectory.back();
     // std::cout << "Human Teb Pose: end\n" << goal.pose.position << '\n';
 
     human_teb.BackPose().toPoseMsg(goal.pose);

@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(hateb_local_planner)
+cmake_minimum_required(VERSION 3.12)
+project(cohan_local_planner)
 
 # Set to Release in order to speed up the program significantly
 set(CMAKE_BUILD_TYPE Release) #None, Debug, Release, RelWithDebInfo, MinSizeRel
@@ -152,7 +152,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include ${EXTERNAL_INCLUDE_DIRS}
-  LIBRARIES hateb_local_planner ${EXTERNAL_LIBS}
+  LIBRARIES cohan_local_planner ${EXTERNAL_LIBS}
   CATKIN_DEPENDS
 	base_local_planner
 	costmap_2d
@@ -186,9 +186,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Build the hateb_local_planner library
+## Build the cohan_local_planner library
 
-add_library(hateb_local_planner
+add_library(cohan_local_planner
    src/timed_elastic_band.cpp
    src/optimal_planner.cpp
    src/obstacles.cpp
@@ -202,11 +202,11 @@ add_library(hateb_local_planner
 )
 
 # Dynamic reconfigure: make sure configure headers are built before any node using them
-add_dependencies(hateb_local_planner ${PROJECT_NAME}_gencfg)
+add_dependencies(cohan_local_planner ${PROJECT_NAME}_gencfg)
 # Generate messages before compiling the lib
-add_dependencies(hateb_local_planner ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(cohan_local_planner ${PROJECT_NAME}_generate_messages_cpp)
 
-target_link_libraries(hateb_local_planner
+target_link_libraries(cohan_local_planner
    ${EXTERNAL_LIBS}
    ${catkin_LIBRARIES}
 )
@@ -219,13 +219,13 @@ add_executable(test_optim_node src/test_optim_node.cpp)
 add_executable(static_visualize src/static_plan_visualizer.cpp)
 
 target_link_libraries(test_optim_node
-   hateb_local_planner
+   cohan_local_planner
    ${EXTERNAL_LIBS}
    ${catkin_LIBRARIES}
 )
 
 target_link_libraries(static_visualize
-   hateb_local_planner
+   cohan_local_planner
    ${EXTERNAL_LIBS}
    ${catkin_LIBRARIES}
 )
@@ -252,7 +252,7 @@ install(PROGRAMS
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS hateb_local_planner
+install(TARGETS cohan_local_planner
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 install(TARGETS test_optim_node
@@ -272,7 +272,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
-  hateb_local_planner_plugin.xml
+  cohan_local_planner_plugin.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
@@ -288,11 +288,11 @@ install(DIRECTORY
 if (CATKIN_ENABLE_TESTING)
   catkin_add_gtest(test_teb_basics test/teb_basics.cpp)
   if(TARGET test_teb_basics)
-     target_link_libraries(test_teb_basics hateb_local_planner)
+     target_link_libraries(test_teb_basics cohan_local_planner)
   endif()
 endif()
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_hateb_local_planner.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_cohan_local_planner.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

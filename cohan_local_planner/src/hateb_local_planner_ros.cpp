@@ -93,7 +93,7 @@ HATebLocalPlannerROS::~HATebLocalPlannerROS()
 {
 }
 
-void HATebLocalPlannerROS::reconfigureCB(HATebLocalPlannerReconfigureConfig& config, uint32_t level)
+void HATebLocalPlannerROS::reconfigureCB(cohan_local_planner::HATebLocalPlannerReconfigureConfig& config, uint32_t level)
 {
   cfg_.reconfigure(config);
 }
@@ -184,8 +184,8 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     odom_helper_.setOdomTopic(cfg_.odom_topic);
 
     // setup dynamic reconfigure
-    dynamic_recfg_ = boost::make_shared< dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig> >(nh);
-    dynamic_reconfigure::Server<HATebLocalPlannerReconfigureConfig>::CallbackType cb = boost::bind(&HATebLocalPlannerROS::reconfigureCB, this, _1, _2);
+    dynamic_recfg_ = boost::make_shared< dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig> >(nh);
+    dynamic_reconfigure::Server<cohan_local_planner::HATebLocalPlannerReconfigureConfig>::CallbackType cb = boost::bind(&HATebLocalPlannerROS::reconfigureCB, this, _1, _2);
     dynamic_recfg_->setCallback(cb);
 
     // validate optimization footprint and costmap footprint
@@ -216,12 +216,12 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
 
     humans_sub_ = nh.subscribe(HUMANS_SUB_TOPIC, 1, &HATebLocalPlannerROS::humansCB, this);
 
-    // op_costs_pub_ = nh.advertise<hateb_local_planner::OptimizationCostArray>( OP_COSTS_TOPIC, 1);
+    // op_costs_pub_ = nh.advertise<cohan_local_planner::OptimizationCostArray>( OP_COSTS_TOPIC, 1);
     // robot_pose_pub_ = nh.advertise<geometry_msgs::Pose>(ROB_POS_TOPIC, 1);
     humans_states_pub_ = nh.advertise<human_msgs::StateArray>("humans_states",1);
     log_pub_ = nh.advertise<std_msgs::String>(HATEB_LOG,1);
 
-    last_call_time_ = ros::Time::now() - ros::Duration(cfg_.hateb.pose_prediction_reset_time);
+    last_call_time_ = ros::Time::now();
 
     last_omega_sign_change_ = ros::Time::now() - ros::Duration(cfg_.optim.omega_chage_time_seperation);
 
@@ -235,7 +235,7 @@ void HATebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, cos
     ext_goal = false;
     backed_off = false;
     goal_ctrl = true;
-    humans_states_.states.clear();
+    humans_states_.clear();
     reset_states = true;
     stuck_human_id = -1;
 
@@ -292,122 +292,262 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
 
 
   tracked_humans_ = tracked_humans;
-  std::vector<double> human_dists;
-  std::vector<double> humans_behind;
+  std::map<unsigned int, double> human_dists;
+  std::map<unsigned int, double> humans_behind;
   // std::vector<bool> humans_behind_ids;
 
   geometry_msgs::TransformStamped transformStamped;
-  transformStamped = tf_->lookupTransform("map", "base_link",ros::Time(0),ros::Duration(0.5));
+  transformStamped = tf_->lookupTransform(
+    tracked_humans_.header.frame_id,
+    robot_base_frame_,
+    ros::Time(0),
+    ros::Duration(0.5)
+  );
   auto xpos = transformStamped.transform.translation.x;
   auto ypos = transformStamped.transform.translation.y;
   auto ryaw = tf2::getYaw(transformStamped.transform.rotation);
   Eigen::Vector2d robot_vec(std::cos(ryaw),std::sin(ryaw));
-  std::vector<double> hum_xpos;
-  std::vector<double> hum_ypos;
+  std::map<unsigned int, double> hum_xpos;
+  std::map<unsigned int, double> hum_ypos;
 
-  int itr = 0;
-
-  for(auto &human: tracked_humans_.humans){
-    if(humans_states_.states.size()<tracked_humans_.humans.size()){
-      humans_states_.states.push_back(hateb_local_planner::HumanState::NO_STATE);
-      //humans_states_.states.push_back(hateb_local_planner::HumanState::STATIC);
+  // searching for old tracks
+  std::vector<unsigned int> old_track_ids;
+  for (const auto& human_vel: human_vels) {
+    auto it = std::find_if(
+      tracked_humans_.humans.begin(),
+      tracked_humans_.humans.end(),
+      [&](const human_msgs::TrackedHuman& tracked_human) {
+        return human_vel.first == tracked_human.track_id;
+      }
+    );
+    // human ID from human_vels not found in the newest track ID list
+    if (it == tracked_humans_.humans.end()) {
+      old_track_ids.push_back(human_vel.first);
     }
-    if(human_vels.size()< human.track_id){
-      std::vector<double> h_vels;
-      human_vels.push_back(h_vels);
-      human_nominal_vels.push_back(0.0);
+  }
+  // clearing old tracks
+  for (const auto& human_id: old_track_ids) {
+    human_vels.erase(human_id);
+    human_nominal_vels.erase(human_id);
+    humans_states_.erase(human_id);
+  }
+
+  ////////////////
+  // update vels
+  for(auto &human: tracked_humans_.humans){
+    // check if data of a specific human is already stored
+    auto human_vels_it = std::find_if(
+      human_vels.begin(),
+      human_vels.end(),
+      [&](const std::pair<unsigned int, std::vector<double>>& human_vel) {
+        return human_vel.first == human.track_id;
+      }
+    );
+    // a given ID was NOT found in the storage
+    if (human_vels_it == human_vels.end()) {
+      human_nominal_vels[human.track_id] = 0.0;
+      // previously also HumanState::STATIC
+      humans_states_[human.track_id] = HumanState::NO_STATE;
     }
     for (auto &segment : human.segments){
       if(segment.type==DEFAULT_HUMAN_SEGMENT){
         Eigen::Vector2d rh_vec(segment.pose.pose.position.x-xpos,segment.pose.pose.position.y-ypos);
 
-        humans_behind.push_back(rh_vec.dot(robot_vec));
-        human_dists.push_back(rh_vec.norm());
+        humans_behind[human.track_id] = rh_vec.dot(robot_vec);
+        human_dists[human.track_id] = rh_vec.norm();
 
-        human_vels[itr].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
+        human_vels[human.track_id].push_back(std::hypot(segment.twist.twist.linear.x, segment.twist.twist.linear.y));
 
         if((abs(segment.twist.twist.linear.x)+abs(segment.twist.twist.linear.y)+abs(segment.twist.twist.angular.z)) > 0.0001){
-          if(humans_states_.states[itr]!=hateb_local_planner::HumanState::BLOCKED){
-            humans_states_.states[itr] = hateb_local_planner::HumanState::MOVING;
+          if(humans_states_[human.track_id] != HumanState::BLOCKED){
+            humans_states_[human.track_id] = HumanState::MOVING;
           }
         }
 
-        auto n = human_vels[itr].size();
+        auto n = human_vels[human.track_id].size();
         float average = 0.0f;
         if (n != 0) {
-          average = accumulate(human_vels[itr].begin(), human_vels[itr].end(), 0.0) / n;
+          average = accumulate(human_vels[human.track_id].begin(), human_vels[human.track_id].end(), 0.0) / n;
         }
-        human_nominal_vels[itr] = average;
+        human_nominal_vels[human.track_id] = average;
 
         if(n==cfg_.human.num_moving_avg)
-          human_vels[itr].erase(human_vels[itr].begin());
+          human_vels[human.track_id].erase(human_vels[human.track_id].begin());
         }
     }
-    itr++;
   }
   ROS_INFO_ONCE("Number of humans, %d ", (int)human_vels.size());
 
+  /////////////////////////
+  // update human states
   human_still.clear();
-  for(int i=0;i<prev_tracked_humans_.humans.size();i++){
-    for (int j=0;j<prev_tracked_humans_.humans[i].segments.size();j++){
-      if(prev_tracked_humans_.humans[i].segments[j].type==DEFAULT_HUMAN_SEGMENT){
-        double hum_move_dist = std::hypot(tracked_humans_.humans[i].segments[j].pose.pose.position.x-prev_tracked_humans_.humans[i].segments[j].pose.pose.position.x,
-                                          tracked_humans_.humans[i].segments[j].pose.pose.position.y-prev_tracked_humans_.humans[i].segments[j].pose.pose.position.y);
+  // 1. find humans that were just detected
+  std::vector<unsigned int> new_track_ids;
+  for (const auto& human_new_track: tracked_humans_.humans) {
+    // usage of human_vels would be easier here but let's stick to the input data
+    auto it = std::find_if(
+      prev_tracked_humans_.humans.begin(),
+      prev_tracked_humans_.humans.end(),
+      [=](const human_msgs::TrackedHuman& prev_tracked_human) {
+        return human_new_track.track_id == prev_tracked_human.track_id;
+      }
+    );
+    if (it == prev_tracked_humans_.humans.end()) {
+      new_track_ids.push_back(human_new_track.track_id);
+    }
+  }
+  // 2. find humans that are not tracked anymore
+  // already found, see `old_track_ids`
 
-        auto tm_x = tracked_humans_.humans[i].segments[j].pose.pose.position.x;
-        auto tm_y = tracked_humans_.humans[i].segments[j].pose.pose.position.y;
+  // 3. iterate over humans that are tracked since at least 1 time step back
+  for (const auto& tracked_human: tracked_humans_.humans) {
+    bool processing_new_track_id = false;
+    if (std::find(new_track_ids.begin(), new_track_ids.end(), tracked_human.track_id) != new_track_ids.end()) {
+      processing_new_track_id = true;
+    }
 
-        hum_xpos.push_back(tm_x);
-        hum_ypos.push_back(tm_y);
-        auto n_dist = std::hypot(tm_y - ypos,tm_x - xpos);
-        if(tracked_humans_.humans[i].track_id == stuck_human_id)
-          ang_theta = std::atan2((tm_y - ypos)/n_dist, (tm_x - xpos)/n_dist);
-
-        if(hum_move_dist<0.0001){
-          human_still.push_back(true);
-          if(humans_states_.states[i]==hateb_local_planner::HumanState::MOVING){
-            humans_states_.states[i] = hateb_local_planner::HumanState::STOPPED;
-          }
+    if (processing_new_track_id) {
+      // do sth
+    } else {
+      // process the constituted track
+      // firstly, find the corresponding human in the previous tracks:
+      auto it_prev_tracked_human = std::find_if(
+        prev_tracked_humans_.humans.begin(),
+        prev_tracked_humans_.humans.end(),
+        [&](const human_msgs::TrackedHuman& prev_tracked_human) {
+          return tracked_human.track_id == prev_tracked_human.track_id;
         }
-        else{
-          human_still.push_back(false);
+      );
+      if (it_prev_tracked_human == prev_tracked_humans_.humans.end()) {
+        if (prev_tracked_humans_.humans.empty()) {
+          prev_tracked_humans_ = tracked_humans_;
+          return;
         }
+        throw std::runtime_error(
+          "Could not find tracked human "
+          + std::to_string(tracked_human.track_id)
+          + " in the previous message carrying human data"
+        );
+      }
+      // secondly, find segments:
+      // find the proper segment of the current human
+      human_msgs::TrackedSegment tracked_human_segment;
+      for (const auto& segment: tracked_human.segments) {
+        if (segment.type == DEFAULT_HUMAN_SEGMENT) {
+          tracked_human_segment = segment;
+        }
+      }
+      // find the proper segment of the previous human
+      human_msgs::TrackedSegment prev_tracked_human_segment;
+      for (const auto& segment: it_prev_tracked_human->segments) {
+        if (segment.type == DEFAULT_HUMAN_SEGMENT) {
+          prev_tracked_human_segment = segment;
+        }
+      }
+
+      // thirdly, process as in the original version:
+      double hum_move_dist = std::hypot(
+        tracked_human_segment.pose.pose.position.x - prev_tracked_human_segment.pose.pose.position.x,
+        tracked_human_segment.pose.pose.position.y - prev_tracked_human_segment.pose.pose.position.y
+      );
+
+      auto tm_x = tracked_human_segment.pose.pose.position.x;
+      auto tm_y = tracked_human_segment.pose.pose.position.y;
+
+      hum_xpos[tracked_human.track_id] = tm_x;
+      hum_ypos[tracked_human.track_id] = tm_y;
+
+      auto n_dist = std::hypot(tm_y - ypos,tm_x - xpos);
+      if(tracked_human.track_id == stuck_human_id) {
+        ang_theta = std::atan2((tm_y - ypos)/n_dist, (tm_x - xpos)/n_dist);
+      }
+
+      if(hum_move_dist<0.0001){
+        human_still[tracked_human.track_id] = true;
+        if(humans_states_[tracked_human.track_id] == HumanState::MOVING) {
+          humans_states_[tracked_human.track_id] = HumanState::STOPPED;
+        }
+      }
+      else{
+        human_still[tracked_human.track_id] = false;
       }
     }
   }
   prev_tracked_humans_ = tracked_humans_;
 
-  std::vector<std::pair<double,int>> temp_dist_idx;
+  std::map<unsigned int, double> temp_mapped_dist_idx;
   visible_human_ids.clear();
   isDistMax = true;
-  for(int i=0;i<human_dists.size();i++){
-    auto dist = human_dists[i];
-    current_human_dist = human_dists[0];
-    if(dist<10.0 && humans_behind[i] >= 0.0){
+  for (auto& dist_hum: human_dists) {
+    auto curr_human_id = dist_hum.first;
+    double dist = dist_hum.second;
+    // current_human_dist = human_dists[0]; // does not make sense at all as this is not a sorted vector at this point
+    if(dist < 10.0 && humans_behind[curr_human_id] >= 0.0) {
       isDistMax = false;
-      temp_dist_idx.push_back(std::make_pair(dist,i+1));
+      temp_mapped_dist_idx[curr_human_id] = dist;
     }
   }
 
-  if(temp_dist_idx.size()>0){
-    std::sort(temp_dist_idx.begin(),temp_dist_idx.end());
+  // same content as `temp_mapped_dist_idx`, but allows sorting by value, not key;
+  std::vector<std::pair<unsigned int, double>> id_dist_pairs; // rename to temp_dist_idx
+  if (temp_mapped_dist_idx.size() > 0) {
+    // ref: https://stackoverflow.com/questions/5056645/
+    for (auto itr = temp_mapped_dist_idx.begin(); itr != temp_mapped_dist_idx.end(); ++itr) {
+      id_dist_pairs.push_back(*itr);
+    }
 
-    if(human_dists[temp_dist_idx[0].second-1]<=2.5){
-      isDistunderThreshold = true;
+    for (const auto& pair: id_dist_pairs) {
+    }
+    std::sort(
+      id_dist_pairs.begin(),
+      id_dist_pairs.end(),
+      [=](std::pair<unsigned int, double>& a, std::pair<unsigned int, double>& b) {
+        return a.second < b.second;
       }
-    else{
+    );
+
+    // obtain the smallest distance, knowing the human ID
+    if (human_dists[id_dist_pairs[0].first] <= 2.5) {
+      isDistunderThreshold = true;
+    } else {
       isDistunderThreshold = false;
     }
   }
 
-   if(!stuck){
+  if (!stuck) {
     int n=500;
-    if(temp_dist_idx.size()>=5)
+    if (id_dist_pairs.size() >= 5) {
       n=100;
-    for(int it=0;it<temp_dist_idx.size();it++){
+    }
+    for (const auto& dist_mapped: id_dist_pairs) {
+      // search for a proper human, given by the ID stored in `id_dist_pairs`
+      std::vector<human_msgs::TrackedHuman>::const_iterator tracked_human_it;
+      for (
+        tracked_human_it = tracked_humans_.humans.begin();
+        tracked_human_it != tracked_humans_.humans.end();
+        tracked_human_it++
+      ) {
+        if (tracked_human_it->track_id == dist_mapped.first) {
+          // tracked_human_it now stores proper TrackedHuman element
+          break;
+        }
+      }
+      // search for a proper segment
+      std::vector<human_msgs::TrackedSegment>::const_iterator tracked_segment_it;
+      for (
+        tracked_segment_it = tracked_human_it->segments.begin();
+        tracked_segment_it != tracked_human_it->segments.end();
+        tracked_segment_it++
+      ) {
+        if (tracked_segment_it->type == DEFAULT_HUMAN_SEGMENT) {
+          // tracked_segment_it now stores proper TrackedSegment element
+          break;
+        }
+      }
+
       //Ray Tracing
-      double tm_x =tracked_humans_.humans[temp_dist_idx[it].second-1].segments[0].pose.pose.position.x;
-      double tm_y =tracked_humans_.humans[temp_dist_idx[it].second-1].segments[0].pose.pose.position.y;
+      double tm_x = tracked_segment_it->pose.pose.position.x;
+      double tm_y = tracked_segment_it->pose.pose.position.y;
       auto Dx = (tm_x-xpos)/n;
       auto Dy = (tm_y-ypos)/n;
 
@@ -429,23 +569,26 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
           rob_y += Dy;
         }
       }
-      int hum_id = temp_dist_idx[it].second;
+      int hum_id = tracked_human_it->track_id;
 
 			if(!cell_collision)
 			{
         visible_human_ids.push_back(hum_id);
-				if(humans_states_.states[hum_id-1]==hateb_local_planner::HumanState::NO_STATE){
-					humans_states_.states[hum_id-1] = hateb_local_planner::HumanState::STATIC;
-				}
+        if (humans_states_[hum_id] == HumanState::NO_STATE) {
+          humans_states_[hum_id] == HumanState::STATIC;
+        }
 			}
     }
   }
   else{
-    for(int it=0;it<2 && it<temp_dist_idx.size();it++){
-      if(temp_dist_idx[it].second == stuck_human_id){
-        visible_human_ids.push_back(temp_dist_idx[it].second);
+    for(int it=0;it<2 && it<id_dist_pairs.size();it++){
+      // using iterator to access the key
+      auto iterator = id_dist_pairs.begin();
+      if (iterator->first == stuck_human_id) {
+        visible_human_ids.push_back(iterator->first);
         break;
       }
+      iterator++;
     }
   }
 
@@ -455,18 +598,23 @@ void  HATebLocalPlannerROS::humansCB(const human_msgs::TrackedHumans &tracked_hu
     // if(isMode>=1)
     //   human_radius = 0.08;
 
-    for(int i=0;i<visible_human_ids.size() && i<hum_xpos.size();i++){
+  for(int i=0; i < visible_human_ids.size() && i < hum_xpos.size(); i++) {
     geometry_msgs::Point v1,v2,v3,v4;
-    auto idx = visible_human_ids[i]-1;
-    v1.x = hum_xpos[idx]-human_radius,v1.y=hum_ypos[idx]-human_radius,v1.z=0.0;
-    v2.x = hum_xpos[idx]-human_radius,v2.y=hum_ypos[idx]+human_radius,v2.z=0.0;
-    v3.x = hum_xpos[idx]+human_radius,v3.y=hum_ypos[idx]+human_radius,v3.z=0.0;
-    v4.x = hum_xpos[idx]+human_radius,v4.y=hum_ypos[idx]-human_radius,v4.z=0.0;
+    auto hum_id = visible_human_ids[i];
+    v1.x = hum_xpos[hum_id]-human_radius, v1.y=hum_ypos[hum_id]-human_radius, v1.z=0.0;
+    v2.x = hum_xpos[hum_id]-human_radius, v2.y=hum_ypos[hum_id]+human_radius, v2.z=0.0;
+    v3.x = hum_xpos[hum_id]+human_radius, v3.y=hum_ypos[hum_id]+human_radius, v3.z=0.0;
+    v4.x = hum_xpos[hum_id]+human_radius, v4.y=hum_ypos[hum_id]-human_radius, v4.z=0.0;
 
     std::vector<geometry_msgs::Point> human_pos_costmap;
 
     if(cfg_.robot.is_real){
-  		transformStamped = tf_->lookupTransform("odom_combined","map",ros::Time(0),ros::Duration(0.5));
+      transformStamped = tf_->lookupTransform(
+        global_frame_,
+        tracked_humans_.header.frame_id,
+        ros::Time(0),
+        ros::Duration(0.5)
+      );
   		tf2::doTransform(v1,v1,transformStamped);
   		tf2::doTransform(v2,v2,transformStamped);
   		tf2::doTransform(v3,v3,transformStamped);
@@ -521,9 +669,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   }
 
   if(reset_states){
-    for(int i=0;i<humans_states_.states.size();i++){
-      humans_states_.states[i]=hateb_local_planner::HumanState::NO_STATE;
-      //humans_states_.states[i]=hateb_local_planner::HumanState::STATIC;
+    for (auto& pair: humans_states_) {
+      pair.second = HumanState::NO_STATE;
     }
     reset_states=false;
   }
@@ -549,7 +696,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
   if((ros::Time::now()-last_position_time).toSec()>=2.0){
     if(visible_human_ids.size()>0){
-      if(human_still[visible_human_ids[0]-1] && isDistunderThreshold && !stuck){
+      auto closest_human_id = visible_human_ids[0];
+      if(human_still[closest_human_id] && isDistunderThreshold && !stuck){
         if(change_mode==0){
           ROS_INFO("I am stuck because of human, Changing to VelObs mode");
         }
@@ -560,8 +708,8 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
           if(!stuck)
             ROS_INFO("I am stuck");
           stuck = true;
-          humans_states_.states[visible_human_ids[0]-1] = hateb_local_planner::HumanState::BLOCKED;
-          stuck_human_id = visible_human_ids[0];
+          humans_states_[closest_human_id] = HumanState::BLOCKED;
+          stuck_human_id = closest_human_id;
           isMode = 2;
         }
       }
@@ -680,7 +828,13 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   auto human_start_time = ros::Time::now();
   std::vector<HumanPlanCombined> transformed_human_plans;
   HumanPlanVelMap transformed_human_plan_vel_map;
-  humans_states_pub_.publish(humans_states_);
+
+  // make humans states from the class member map
+  human_msgs::StateArray state_array;
+  for (const auto& pair: humans_states_) {
+    state_array.states.push_back(static_cast<HumanState>(pair.second));
+  }
+  humans_states_pub_.publish(state_array);
 
   switch (cfg_.planning_mode) {
   case 0:
@@ -720,8 +874,9 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
             backed_off = false;
             stuck = false;
             // goal_ctrl = true;
-            if(humans_states_.states[visible_human_ids[0]-1] != hateb_local_planner::HumanState::MOVING)
-	             humans_states_.states[visible_human_ids[0]-1] = hateb_local_planner::HumanState::STATIC;
+            if (humans_states_[visible_human_ids[0]] != HumanState::MOVING) {
+              humans_states_[visible_human_ids[0]] = HumanState::STATIC;
+            }
           }
         }
         else
@@ -736,8 +891,9 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       change_mode = 0;
       backed_off = false;
       stuck = false;
-      if(humans_states_.states[visible_human_ids[0]-1] != hateb_local_planner::HumanState::MOVING)
-         humans_states_.states[visible_human_ids[0]-1] = hateb_local_planner::HumanState::STATIC;
+      if (humans_states_[visible_human_ids[0]] != HumanState::MOVING) {
+        humans_states_[visible_human_ids[0]] = HumanState::STATIC;
+      }
     }
 
     human_path_prediction::HumanPosePredict predict_srv;
@@ -746,8 +902,10 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
       isMode = -1;
 
     for(int i=0;i<2 && i<visible_human_ids.size();i++){
-      if((int)humans_states_.states[visible_human_ids[i]-1]>0){
-        predict_srv.request.ids.push_back(visible_human_ids[i]);
+      auto human_id = visible_human_ids[i];
+      bool is_state_valid = static_cast<int>(humans_states_[human_id]) > 0;
+      if (is_state_valid) {
+        predict_srv.request.ids.push_back(human_id);
         if(isMode==-1)
           isMode = 0;
       }
@@ -831,7 +989,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
         PlanStartVelGoalVel plan_start_vel_goal_vel;
         plan_start_vel_goal_vel.plan = human_plan_combined.plan_to_optimize;
         plan_start_vel_goal_vel.start_vel = transformed_vel.twist;
-        plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id-1]);
+        plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id]);
         plan_start_vel_goal_vel.isMode = isMode;
         if (human_plan_combined.plan_after.size() > 0) {
           plan_start_vel_goal_vel.goal_vel = transformed_vel.twist;
@@ -882,7 +1040,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
 
           PlanStartVelGoalVel plan_start_vel_goal_vel;
           plan_start_vel_goal_vel.plan.push_back(transformed_human_pose);
-          plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id-1]);
+          plan_start_vel_goal_vel.nominal_vel = std::max(0.3, human_nominal_vels[predicted_humans_poses.id]);
           plan_start_vel_goal_vel.isMode = isMode;
           transformed_human_plan_vel_map[predicted_humans_poses.id] =
               plan_start_vel_goal_vel;
@@ -999,7 +1157,7 @@ uint32_t HATebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::Pose
   // Now perform the actual
   auto plan_start_time = ros::Time::now();
   // bool success = planner_->plan(robot_pose_, robot_goal_, robot_vel_, cfg_.goal_tolerance.free_goal_vel); // straight line init
-  hateb_local_planner::OptimizationCostArray op_costs;
+  cohan_local_planner::OptimizationCostArray op_costs;
 
   double dt_resize=cfg_.trajectory.dt_ref;
   double dt_hyst_resize=cfg_.trajectory.dt_hysteresis;
@@ -1188,7 +1346,7 @@ bool HATebLocalPlannerROS::isGoalReached()
     stuck = false;
     goal_ctrl = true;
     human_still.clear();
-    humans_states_.states.clear();
+    humans_states_.clear();
     // states_.states.clear();
     isDistunderThreshold = false;
     backed_off =  false;
@@ -2282,8 +2440,8 @@ void HATebLocalPlannerROS::resetHumansPrediction() {
 }
 
 bool HATebLocalPlannerROS::optimizeStandalone(
-    hateb_local_planner::Optimize::Request &req,
-    hateb_local_planner::Optimize::Response &res) {
+    cohan_local_planner::Optimize::Request &req,
+    cohan_local_planner::Optimize::Response &res) {
   ROS_INFO("optimize service called");
   auto start_time = ros::Time::now();
 
@@ -2388,7 +2546,8 @@ bool HATebLocalPlannerROS::optimizeStandalone(
     PlanStartVelGoalVel plan_start_vel_goal_vel;
     plan_start_vel_goal_vel.plan = human_plan_combined.plan_to_optimize;
     plan_start_vel_goal_vel.start_vel = transformed_vel.twist;
-    // plan_start_vel_goal_vel.nominal_vel = std::max(0.3,human_nominal_vels[predicted_humans_poses.id-1]);
+    // uncommenting below will destroy compilation
+    // plan_start_vel_goal_vel.nominal_vel = std::max(0.3, human_nominal_vels[predicted_humans_poses.id]);
     plan_start_vel_goal_vel.isMode = isMode;
     if (human_plan_combined.plan_after.size() > 0) {
       plan_start_vel_goal_vel.goal_vel = transformed_vel.twist;
@@ -2404,7 +2563,7 @@ bool HATebLocalPlannerROS::optimizeStandalone(
   // now perform the actual planning
   auto plan_start_time = ros::Time::now();
   geometry_msgs::Twist robot_vel_twist;
-  hateb_local_planner::OptimizationCostArray op_costs;
+  cohan_local_planner::OptimizationCostArray op_costs;
 
   bool success = planner_->plan(transformed_plan, &robot_vel_,
                                 cfg_.goal_tolerance.free_goal_vel,
@@ -2499,8 +2658,8 @@ bool HATebLocalPlannerROS::optimizeStandalone(
 }
 
 bool HATebLocalPlannerROS::setApproachID(
-    hateb_local_planner::Approach::Request &req,
-    hateb_local_planner::Approach::Response &res) {
+    cohan_local_planner::Approach::Request &req,
+    cohan_local_planner::Approach::Response &res) {
   if (cfg_.planning_mode == 2) {
     cfg_.approach.approach_id = req.human_id;
     res.message +=

@@ -44,7 +44,7 @@
 #define VISUALIZATION_H_
 
 // teb stuff
-#include <hateb_local_planner/TrajectoryMsg.h>
+#include <cohan_local_planner/TrajectoryMsg.h>
 #include <hateb_local_planner/robot_footprint_model.h>
 #include <hateb_local_planner/hateb_config.h>
 #include <hateb_local_planner/timed_elastic_band.h>
@@ -82,7 +82,7 @@ namespace hateb_local_planner {
 
 typedef struct {
   std::vector<geometry_msgs::PoseStamped> plan_before;
-  std::vector<TrajectoryPointMsg> optimized_trajectory;
+  std::vector<cohan_local_planner::TrajectoryPointMsg> optimized_trajectory;
   std::vector<geometry_msgs::PoseStamped> plan_after;
 } PlanTrajCombined;
 
@@ -95,7 +95,7 @@ typedef struct {
 typedef struct {
   uint64_t id;
   std::vector<geometry_msgs::PoseStamped> plan_before;
-  std::vector<TrajectoryPointMsg> optimized_trajectory;
+  std::vector<cohan_local_planner::TrajectoryPointMsg> optimized_trajectory;
   std::vector<geometry_msgs::PoseStamped> plan_after;
 } HumanPlanTrajCombined;
 

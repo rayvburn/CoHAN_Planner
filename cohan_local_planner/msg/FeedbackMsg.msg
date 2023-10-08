@@ -4,7 +4,7 @@
 std_msgs/Header header
 
 # The planned trajectory (or if multiple plans exist, all of them)
-hateb_local_planner/TrajectoryMsg[] trajectories
+cohan_local_planner/TrajectoryMsg[] trajectories
 
 # Index of the trajectory in 'trajectories' that is selected currently
 uint16 selected_trajectory_idx

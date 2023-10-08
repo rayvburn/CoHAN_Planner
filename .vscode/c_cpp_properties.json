@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                // e.g., action, msg, srv files
+                "${workspaceFolder}/../../devel/include/**",
+                "${workspaceFolder}/../../devel/.private/human_msgs/include/**",
+                "${workspaceFolder}/include/**",
+                // C++
+                "/usr/include/c++/7/**",
+                // library headers
+                "/usr/include/**",
+                // ROS headers
+                "/opt/ros/melodic/include/**"
+            ],
+            "name": "ROS",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

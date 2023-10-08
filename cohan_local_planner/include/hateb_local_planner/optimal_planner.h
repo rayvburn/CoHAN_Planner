@@ -82,7 +82,7 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <tf/transform_datatypes.h>
-#include <hateb_local_planner/TrajectoryMsg.h>
+#include <cohan_local_planner/TrajectoryMsg.h>
 
 #include <nav_msgs/Odometry.h>
 #include <limits.h>
@@ -184,7 +184,7 @@ public:
                     const geometry_msgs::Twist *start_vel = NULL,
                     bool free_goal_vel = false,
                     const HumanPlanVelMap *initial_human_plan_vels = NULL,
-                    hateb_local_planner::OptimizationCostArray *op_costs = NULL,
+                    cohan_local_planner::OptimizationCostArray *op_costs = NULL,
                     double dt_ref = 0.4, double dt_hyst=0.1);
 
   /**
@@ -203,7 +203,7 @@ public:
    *		      otherwise the final velocity will be zero (default: false)
    * @return \c true if planning was successful, \c false otherwise
    */
-  virtual bool plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, hateb_local_planner::OptimizationCostArray *op_costs =NULL, double dt_ref=0.4, double dt_hyst=0.1);
+  virtual bool plan(const tf::Pose& start, const tf::Pose& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, cohan_local_planner::OptimizationCostArray *op_costs =NULL, double dt_ref=0.4, double dt_hyst=0.1);
 
   /**
    * @brief Plan a trajectory between a given start and goal pose
@@ -221,7 +221,7 @@ public:
    *		      otherwise the final velocity will be zero (default: false)
    * @return \c true if planning was successful, \c false otherwise
    */
-  virtual bool plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, double pre_plan_time = 0.0, hateb_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref = 0.4, double dt_hyst=0.1);
+  virtual bool plan(const PoseSE2& start, const PoseSE2& goal, const geometry_msgs::Twist* start_vel = NULL, bool free_goal_vel=false, double pre_plan_time = 0.0, cohan_local_planner::OptimizationCostArray *op_costs=NULL, double dt_ref = 0.4, double dt_hyst=0.1);
 
 
   /**
@@ -267,7 +267,7 @@ public:
                    double obst_cost_scale = 1.0,
                    double viapoint_cost_scale = 1.0,
                    bool alternative_time_cost = false,
-                   hateb_local_planner::OptimizationCostArray *op_costs = NULL,
+                   cohan_local_planner::OptimizationCostArray *op_costs = NULL,
                    double dt_ref = 0.4,
                    double dt_hyst = 0.1);
 
@@ -277,7 +277,7 @@ public:
                   double obst_cost_scale = 1.0,
                   double viapoint_cost_scale = 1.0,
                   bool alternative_time_cost = false,
-                  hateb_local_planner::OptimizationCostArray *op_costs = NULL);
+                  cohan_local_planner::OptimizationCostArray *op_costs = NULL);
 
   //@}
 
@@ -457,7 +457,7 @@ public:
   void computeCurrentCost(double obst_cost_scale = 1.0,
                           double viapoint_cost_scale = 1.0,
                           bool alternative_time_cost = false,
-                          hateb_local_planner::OptimizationCostArray *op_costs = NULL);
+                          cohan_local_planner::OptimizationCostArray *op_costs = NULL);
 
   /**
    * Compute and return the cost of the current optimization graph (supports multiple trajectories)
@@ -528,8 +528,8 @@ public:
    * @todo The acceleration profile is not added at the moment.
    * @param[out] trajectory the resulting trajectory
    */
-  void getFullTrajectory(std::vector<TrajectoryPointMsg>& trajectory) const;
-  void getFullHumanTrajectory(const uint64_t human_id, std::vector<TrajectoryPointMsg> &human_trajectory);
+  void getFullTrajectory(std::vector<cohan_local_planner::TrajectoryPointMsg>& trajectory) const;
+  void getFullHumanTrajectory(const uint64_t human_id, std::vector<cohan_local_planner::TrajectoryPointMsg> &human_trajectory);
 
   /**
    * @brief Check whether the planned trajectory is feasible or not.
